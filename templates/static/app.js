@@ -70,7 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="address">${listing.address || 'Address not available'}</div>
         ${listing.neighborhood ? `<div class="neighborhood">${listing.neighborhood}</div>` : ''}
         <div class="details">
-          ${listing.bedrooms} bed &middot; ${listing.bathrooms} bath${listing.sqft ? ` &middot; ${formatPrice(listing.sqft)} sqft` : ''}
+          ${listing.bedrooms ? `${listing.bedrooms} bed` : 'Beds: Contact'}
+          &middot;
+          ${listing.bathrooms ? `${listing.bathrooms} bath` : 'Bath: Contact'}
+          ${listing.sqft ? ` &middot; ${formatPrice(listing.sqft)} sqft` : ''}
           ${listing.available_date ? ` &middot; Avail: ${listing.available_date}` : ''}
         </div>
         <div class="tags">${renderTags(listing)}<span class="tag tag-source">${listing.source || ''}</span></div>
