@@ -39,7 +39,7 @@ collectors:
   craigslist:
     enabled: true
   rentcast:
-    enabled: true
+    enabled: false
     max_calls_per_month: 45
   zillow:
     enabled: true
@@ -48,7 +48,7 @@ collectors:
     enabled: true
     max_calls_per_month: 8
   redfin:
-    enabled: true
+    enabled: false
     max_calls_per_month: 45
 
 site:

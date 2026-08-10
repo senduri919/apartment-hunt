@@ -19,10 +19,10 @@ class ZillowCollector(BaseCollector):
     API_HOST = "real-estate-zillow-com.p.rapidapi.com"
     API_BASE = f"https://{API_HOST}"
 
-    PARAM_ATTEMPTS = [
-        {"url": f"https://www.zillow.com/san-francisco-ca/rentals/4-_beds/"},
-        {"location": "San Francisco, CA"},
-        {"slug": "san-francisco-ca"},
+    SEARCH_URLS = [
+        "https://www.zillow.com/mission-district-san-francisco-ca/rentals/4-_beds/",
+        "https://www.zillow.com/hayes-valley-san-francisco-ca/rentals/4-_beds/",
+        "https://www.zillow.com/san-francisco-ca/rentals/4-_beds/",
     ]
 
     def collect(self) -> list[Listing]:
@@ -38,13 +38,22 @@ class ZillowCollector(BaseCollector):
             "x-rapidapi-host": self.API_HOST,
         }
 
-        for attempt in self.PARAM_ATTEMPTS:
-            listings = self._try_search(headers, attempt)
-            if listings:
-                return listings
+        all_listings = []
+        seen_ids = set()
+        for url in self.SEARCH_URLS:
+            listings = self._try_search(headers, {"url": url})
+            for listing in listings:
+                if listing.source_id not in seen_ids:
+                    seen_ids.add(listing.source_id)
+                    all_listings.append(listing)
+            if all_listings:
+                break
 
-        logger.warning("Zillow: no listings found from any parameter combination")
-        return []
+        if not all_listings:
+            logger.warning("Zillow: no listings found from any URL")
+        else:
+            logger.info(f"Zillow: {len(all_listings)} unique listings total")
+        return all_listings
 
     def _try_search(self, headers: dict, location_params: dict) -> list[Listing]:
         url = f"{self.API_BASE}/v1/search/rent"
