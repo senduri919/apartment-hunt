@@ -4,11 +4,14 @@ search:
   neighborhoods:
     - "Mission District"
     - "Hayes Valley"
+    - "Financial District"
   zip_codes:
     - "94110"
     - "94102"
     - "94103"
     - "94114"
+    - "94104"
+    - "94111"
   min_bedrooms: 4
   max_bedrooms: 10
   min_bathrooms: 1

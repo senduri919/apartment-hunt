@@ -32,11 +32,15 @@ NEIGHBORHOOD_KEYWORDS = {
     "hayes valley": ["hayes valley", "hayes st", "patricia's green", "hayes",
                      "octavia", "laguna st", "buchanan st", "fell st",
                      "oak st", "grove st", "ivy st", "linden st"],
+    "financial district": ["financial district", "fidi", "battery st", "front st",
+                           "sansome", "montgomery st", "california st", "pine st",
+                           "bush st", "embarcadero"],
 }
 
 NEIGHBORHOOD_BOUNDS = {
     "Mission District": {"lat": (37.748, 37.766), "lng": (-122.427, -122.406)},
     "Hayes Valley": {"lat": (37.770, 37.780), "lng": (-122.432, -122.416)},
+    "Financial District": {"lat": (37.790, 37.798), "lng": (-122.403, -122.394)},
 }
 
 
