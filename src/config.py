@@ -21,7 +21,7 @@ class SearchConfig:
     neighborhoods: list[str] = field(default_factory=lambda: ["Mission District", "Hayes Valley"])
     zip_codes: list[str] = field(default_factory=lambda: ["94110", "94102", "94103", "94114"])
     min_bedrooms: int = 4
-    max_bedrooms: int = 10
+    max_bedrooms: int = 4
     min_bathrooms: int = 1
     preferred_bathrooms: int = 2
     max_price: int = 10000

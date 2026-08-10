@@ -250,6 +250,8 @@ class ZumperCollector(BaseCollector):
             return False
         if listing.bedrooms and listing.bedrooms < search.min_bedrooms:
             return False
+        if listing.bedrooms and listing.bedrooms > search.max_bedrooms:
+            return False
         if listing.bathrooms and listing.bathrooms < search.min_bathrooms:
             return False
         valid_zips = set(search.zip_codes)

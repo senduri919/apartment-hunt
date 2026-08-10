@@ -54,6 +54,7 @@ class CraigslistCollector(BaseCollector):
         search = self.config.search
         params = {
             "min_bedrooms": search.min_bedrooms,
+            "max_bedrooms": search.max_bedrooms,
             "min_bathrooms": search.min_bathrooms,
             "max_price": search.max_price,
             "availabilityMode": 0,
@@ -194,6 +195,7 @@ class CraigslistCollector(BaseCollector):
         search = self.config.search
         params = {
             "min_bedrooms": search.min_bedrooms,
+            "max_bedrooms": search.max_bedrooms,
             "min_bathrooms": search.min_bathrooms,
             "max_price": search.max_price,
             "availabilityMode": 0,

@@ -13,7 +13,7 @@ search:
     - "94104"
     - "94111"
   min_bedrooms: 4
-  max_bedrooms: 10
+  max_bedrooms: 4
   min_bathrooms: 1
   preferred_bathrooms: 2
   max_price: 10000

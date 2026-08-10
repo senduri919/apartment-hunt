@@ -11,7 +11,7 @@
 <header>
   <div class="container">
     <h1>{{ config.site.title }}</h1>
-    <div class="subtitle">Mission District &amp; Hayes Valley &middot; 4+ Bed &middot; &le;$10k/mo &middot; Updated {{ generated_at }}</div>
+    <div class="subtitle">{{ config.search.neighborhoods | join(' · ') }} &middot; {{ config.search.min_bedrooms }} Bed &middot; &le;${{ '{:,}'.format(config.search.max_price) }}/mo &middot; Updated {{ generated_at }}</div>
     <div class="stats-bar">
       <div class="stat"><strong>{{ stats.total }}</strong> Active Listings</div>
       <div class="stat"><strong>{{ stats.new_count }}</strong> New</div>
@@ -79,7 +79,7 @@
 
 <footer>
   <div class="container">
-    <p>SF Apartment Hunt &middot; Monitoring Craigslist, RentCast, Zillow, Zumper, Redfin</p>
+    <p>SF Apartment Hunt &middot; Monitoring Craigslist, Zillow, Zumper</p>
     <p>Data refreshed every 12 hours &middot; <a href="https://github.com/senduri919/apartment-hunt" style="color:var(--primary);">GitHub</a></p>
   </div>
 </footer>
