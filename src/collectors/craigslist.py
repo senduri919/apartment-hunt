@@ -192,22 +192,47 @@ class CraigslistCollector(BaseCollector):
         soup = BeautifulSoup(resp.text, "html.parser")
         listings = []
 
-        for result in soup.select(".cl-static-search-result, .result-row, li.cl-search-result"):
+        selectors = [
+            ".cl-static-search-result",
+            ".result-row",
+            "li.cl-search-result",
+            ".result-info",
+            ".gallery-card",
+        ]
+        results = []
+        for sel in selectors:
+            results = soup.select(sel)
+            if results:
+                logger.info(f"Craigslist HTML: matched {len(results)} elements with '{sel}'")
+                break
+
+        if not results:
+            all_links = soup.select("a[href*='/apa/']")
+            logger.info(f"Craigslist HTML: found {len(all_links)} links containing '/apa/'")
+            results = all_links
+
+        for result in results:
             try:
-                link_el = result.select_one("a[href]")
+                link_el = result if result.name == "a" else result.select_one("a[href]")
                 if not link_el:
                     continue
                 link = link_el.get("href", "")
                 if not link.startswith("http"):
                     link = f"https://sfbay.craigslist.org{link}"
 
+                if "/apa/" not in link and "/d/" not in link:
+                    continue
+
                 title = link_el.get_text(strip=True) or result.get_text(strip=True)
 
                 price = self._extract_price(title)
                 if not price:
-                    price_el = result.select_one(".priceinfo, .result-price")
+                    price_el = result.select_one(".priceinfo, .result-price, .price")
                     if price_el:
                         price = self._extract_price(price_el.get_text())
+                if not price:
+                    full_text = result.get_text()
+                    price = self._extract_price(full_text)
                 if not price or price > search.max_price:
                     continue
 
@@ -225,21 +250,23 @@ class CraigslistCollector(BaseCollector):
                     description=title,
                 )
                 listing.id = generate_listing_id(listing.address or link, listing.price, listing.bedrooms)
-
-                if self._matches_neighborhood(listing):
-                    listings.append(listing)
+                listings.append(listing)
 
             except Exception as e:
                 logger.debug(f"Craigslist HTML parse error for result: {e}")
                 continue
 
-        logger.info(f"Craigslist HTML fallback: found {len(listings)} listings")
+        logger.info(f"Craigslist HTML fallback: {len(listings)} listings before neighborhood filter")
 
-        for listing in listings[:20]:
+        enriched = []
+        for listing in listings[:30]:
             self._enrich_listing(listing)
+            if self._matches_neighborhood(listing):
+                enriched.append(listing)
             time.sleep(random.uniform(1.5, 3.0))
 
-        return listings
+        logger.info(f"Craigslist HTML fallback: {len(enriched)} listings after enrichment + neighborhood filter")
+        return enriched
 
     def _matches_neighborhood(self, listing: Listing) -> bool:
         if listing.neighborhood:

@@ -10,7 +10,11 @@ from src.models import Listing, generate_listing_id
 
 logger = logging.getLogger(__name__)
 
-APIFY_ACTOR_ID = "scrapemind~zumpercom-scraper"
+APIFY_ACTORS = [
+    "scrapemind~zumpercom-scraper",
+    "benthepythondev~zumper-rental-scraper",
+    "stealth_mode~zumper-property-search-scraper",
+]
 
 
 class ZumperCollector(BaseCollector):
@@ -42,39 +46,15 @@ class ZumperCollector(BaseCollector):
             "Content-Type": "application/json",
         }
 
-        try:
-            logger.info("Starting Zumper scraper via Apify")
-            start_url = f"https://api.apify.com/v2/acts/{APIFY_ACTOR_ID}/runs"
-            resp = requests.post(start_url, json=run_input, headers=headers, timeout=30)
-            self.record_api_call()
+        for actor_id in APIFY_ACTORS:
+            results = self._try_actor(actor_id, run_input, headers)
+            if results is not None:
+                break
+        else:
+            logger.warning("Zumper: all Apify actors failed or require payment")
+            return []
 
-            if resp.status_code == 429:
-                logger.warning("Zumper/Apify: rate limited")
-                return []
-
-            if resp.status_code in (401, 403):
-                logger.error(f"Zumper/Apify auth error ({resp.status_code}): {resp.text[:300]}")
-                token_url = f"{start_url}?token={self.config.apify_api_key}"
-                logger.info("Retrying Apify with token query param")
-                resp = requests.post(token_url, json=run_input, timeout=30)
-                if resp.status_code in (401, 403):
-                    logger.error(f"Zumper/Apify retry failed ({resp.status_code}): {resp.text[:300]}")
-                    return []
-
-            resp.raise_for_status()
-            run_data = resp.json().get("data", {})
-            run_id = run_data.get("id")
-
-            if not run_id:
-                logger.error("Zumper: failed to start Apify actor run")
-                return []
-
-            results = self._wait_for_results(run_id, headers, self.config.apify_api_key)
-            if not results:
-                return []
-
-        except requests.RequestException as e:
-            logger.error(f"Zumper/Apify error: {e}")
+        if not results:
             return []
 
         listings = []
@@ -85,6 +65,40 @@ class ZumperCollector(BaseCollector):
 
         logger.info(f"Zumper: found {len(listings)} matching listings")
         return listings
+
+    def _try_actor(self, actor_id: str, run_input: dict, headers: dict) -> list | None:
+        logger.info(f"Zumper: trying Apify actor {actor_id}")
+        start_url = f"https://api.apify.com/v2/acts/{actor_id}/runs"
+
+        try:
+            resp = requests.post(start_url, json=run_input, headers=headers, timeout=30)
+            self.record_api_call()
+
+            if resp.status_code == 429:
+                logger.warning("Zumper/Apify: rate limited")
+                return []
+
+            if resp.status_code in (401, 403):
+                msg = resp.text[:200]
+                if "rent" in msg.lower() or "paid" in msg.lower() or "trial" in msg.lower():
+                    logger.warning(f"Zumper: actor {actor_id} requires payment, trying next")
+                    return None
+                logger.error(f"Zumper/Apify auth error ({resp.status_code}): {msg}")
+                return None
+
+            resp.raise_for_status()
+            run_data = resp.json().get("data", {})
+            run_id = run_data.get("id")
+
+            if not run_id:
+                logger.error(f"Zumper: failed to start actor {actor_id}")
+                return None
+
+            return self._wait_for_results(run_id, headers, self.config.apify_api_key)
+
+        except requests.RequestException as e:
+            logger.error(f"Zumper/Apify error with {actor_id}: {e}")
+            return None
 
     def _wait_for_results(self, run_id: str, headers: dict, token: str, max_wait: int = 120) -> list:
         dataset_url = f"https://api.apify.com/v2/actor-runs/{run_id}"
