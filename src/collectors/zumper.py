@@ -8,6 +8,11 @@ import requests
 from src.collectors.base import BaseCollector
 from src.models import Listing, generate_listing_id
 
+NEIGHBORHOOD_BOUNDS = {
+    "Mission District": {"lat": (37.748, 37.766), "lng": (-122.427, -122.406)},
+    "Hayes Valley": {"lat": (37.770, 37.780), "lng": (-122.432, -122.416)},
+}
+
 logger = logging.getLogger(__name__)
 
 APIFY_ACTORS = [
@@ -228,6 +233,14 @@ class ZumperCollector(BaseCollector):
         elif zip_code in {"94102", "94103"} or "hayes" in addr_lower or "hayes" in hood:
             listing.neighborhood = "Hayes Valley"
 
+        if not listing.neighborhood and listing.latitude and listing.longitude:
+            for name, bounds in NEIGHBORHOOD_BOUNDS.items():
+                lat_min, lat_max = bounds["lat"]
+                lng_min, lng_max = bounds["lng"]
+                if lat_min <= listing.latitude <= lat_max and lng_min <= listing.longitude <= lng_max:
+                    listing.neighborhood = name
+                    return
+
     def _matches_filters(self, listing: Listing) -> bool:
         search = self.config.search
         if listing.price > search.max_price:
@@ -235,5 +248,8 @@ class ZumperCollector(BaseCollector):
         if listing.bedrooms and listing.bedrooms < search.min_bedrooms:
             return False
         if listing.bathrooms and listing.bathrooms < search.min_bathrooms:
+            return False
+        valid_zips = set(search.zip_codes)
+        if listing.zip_code and listing.zip_code not in valid_zips and not listing.neighborhood:
             return False
         return True
