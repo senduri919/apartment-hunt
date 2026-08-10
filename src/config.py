@@ -22,7 +22,8 @@ class SearchConfig:
     zip_codes: list[str] = field(default_factory=lambda: ["94110", "94102", "94103", "94114"])
     min_bedrooms: int = 4
     max_bedrooms: int = 10
-    min_bathrooms: int = 2
+    min_bathrooms: int = 1
+    preferred_bathrooms: int = 2
     max_price: int = 10000
     move_in_deadline: str = "2026-10-31"
 

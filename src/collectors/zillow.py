@@ -131,41 +131,63 @@ class ZillowCollector(BaseCollector):
                         return sub
         return []
 
+    def _parse_price(self, raw) -> int | None:
+        if not raw:
+            return None
+        if isinstance(raw, (int, float)):
+            return int(raw)
+        try:
+            return int(float(str(raw).replace("$", "").replace(",", "").replace("+", "").split("/")[0]))
+        except (ValueError, TypeError):
+            return None
+
+    def _best_unit(self, units: list, preferred_beds: int = 4) -> dict | None:
+        candidates = []
+        for u in units:
+            beds = u.get("beds") or u.get("bedrooms")
+            if not beds:
+                continue
+            beds = int(beds)
+            baths = float(u.get("baths") or u.get("bathrooms") or 0)
+            price = self._parse_price(u.get("price") or u.get("rent"))
+            candidates.append({"beds": beds, "baths": baths, "price": price})
+        if not candidates:
+            return None
+        at_or_above = [c for c in candidates if c["beds"] >= preferred_beds]
+        if at_or_above:
+            return min(at_or_above, key=lambda c: c["beds"])
+        return max(candidates, key=lambda c: c["beds"])
+
     def _parse_listing(self, item: dict) -> Listing | None:
         address = (item.get("address", "") or item.get("addressStreet", "")
                    or item.get("streetAddress", ""))
 
-        price = item.get("price") or item.get("minBaseRent") or item.get("rentZestimate")
         units = item.get("units")
-        if not price and isinstance(units, list) and units:
-            unit_prices = []
-            for u in units:
-                p = u.get("price")
-                if p:
-                    try:
-                        unit_prices.append(int(str(p).replace("$", "").replace(",", "").replace("+", "").split("/")[0]))
-                    except (ValueError, TypeError):
-                        pass
-            price = min(unit_prices) if unit_prices else None
-        if isinstance(price, str):
-            try:
-                price = int(float(price.replace("$", "").replace(",", "").replace("+", "").split("/")[0]))
-            except (ValueError, TypeError):
-                return None
-        if not price:
-            return None
-        price = int(price)
-
         bedrooms = item.get("bedrooms") or item.get("beds") or 0
         bathrooms = item.get("bathrooms") or item.get("baths") or 0
+
         if not bedrooms and isinstance(units, list) and units:
-            for u in units:
-                b = u.get("beds") or u.get("bedrooms")
-                if b:
-                    bedrooms = max(int(b), int(bedrooms or 0))
-                ba = u.get("baths") or u.get("bathrooms")
-                if ba:
-                    bathrooms = max(float(ba), float(bathrooms or 0))
+            best = self._best_unit(units, self.config.search.min_bedrooms)
+            if best:
+                bedrooms = best["beds"]
+                bathrooms = best["baths"] or bathrooms
+                if best["price"]:
+                    item["_unit_price"] = best["price"]
+            else:
+                logger.debug(f"Zillow: skipping building-level entry with no usable units: {address}")
+                return None
+
+        if not bedrooms:
+            return None
+
+        price = item.get("_unit_price") or item.get("price")
+        if not price and bedrooms >= self.config.search.min_bedrooms:
+            price = item.get("maxBaseRent") or item.get("minBaseRent") or item.get("rentZestimate")
+        if not price:
+            price = item.get("minBaseRent") or item.get("rentZestimate")
+        price = self._parse_price(price)
+        if not price:
+            return None
 
         detail_url = item.get("detailUrl", "")
         if detail_url and detail_url.startswith("/"):
@@ -220,8 +242,5 @@ class ZillowCollector(BaseCollector):
         if listing.bedrooms and listing.bedrooms < search.min_bedrooms:
             return False
         if listing.bathrooms and listing.bathrooms < search.min_bathrooms:
-            return False
-        valid_zips = set(search.zip_codes)
-        if listing.zip_code and listing.zip_code not in valid_zips and not listing.neighborhood:
             return False
         return True

@@ -17,7 +17,7 @@ APIFY_ACTORS = [
 
 ACTOR_INPUTS = {
     "benthepythondev~zumper-rental-scraper": {
-        "searchUrl": "https://www.zumper.com/apartments-for-rent/san-francisco-ca/4+-beds?price-max=10000&bathrooms-min=2",
+        "searchUrl": "https://www.zumper.com/apartments-for-rent/san-francisco-ca/4+-beds?price-max=10000",
         "maxItems": 100,
     },
     "stealth_mode~zumper-property-search-scraper": {
@@ -235,8 +235,5 @@ class ZumperCollector(BaseCollector):
         if listing.bedrooms and listing.bedrooms < search.min_bedrooms:
             return False
         if listing.bathrooms and listing.bathrooms < search.min_bathrooms:
-            return False
-        valid_zips = set(search.zip_codes)
-        if listing.zip_code and listing.zip_code not in valid_zips and not listing.neighborhood:
             return False
         return True

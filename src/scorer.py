@@ -114,8 +114,42 @@ def _score_price(price: int) -> float:
     return _clamp((10000 - price) / (10000 - 4000) * 100)
 
 
-def score_listing(listing: Listing, weights: dict, move_in_deadline: str = "2026-10-31") -> float:
+def _score_bathroom_match(bathrooms: float, preferred: int = 2) -> float:
+    if bathrooms >= preferred:
+        return 100.0
+    if bathrooms >= 1.5:
+        return 60.0
+    if bathrooms >= 1:
+        return 30.0
+    return 0.0
+
+
+def _score_neighborhood(
+    neighborhood: str, target_neighborhoods: list[str]
+) -> float:
+    if not neighborhood:
+        return 10.0
+    hood_lower = neighborhood.lower()
+    for target in target_neighborhoods:
+        if target.lower() in hood_lower or hood_lower in target.lower():
+            return 100.0
+    return 20.0
+
+
+def score_listing(
+    listing: Listing,
+    weights: dict,
+    move_in_deadline: str = "2026-10-31",
+    preferred_bathrooms: int = 2,
+    neighborhoods: list[str] | None = None,
+) -> float:
     scorers = {
+        "neighborhood": _score_neighborhood(
+            listing.neighborhood, neighborhoods or []
+        ),
+        "bathroom_match": _score_bathroom_match(
+            listing.bathrooms, preferred_bathrooms
+        ),
         "sqft": _score_sqft(listing.sqft),
         "building_type": _score_building_type(listing.building_type),
         "laundry": _score_laundry(listing.has_in_unit_laundry),

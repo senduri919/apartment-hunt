@@ -11,21 +11,24 @@ search:
     - "94114"
   min_bedrooms: 4
   max_bedrooms: 10
-  min_bathrooms: 2
+  min_bathrooms: 1
+  preferred_bathrooms: 2
   max_price: 10000
   move_in_deadline: "2026-10-31"
 
 scoring:
   weights:
-    sqft: 20
-    building_type: 15
-    laundry: 15
-    transit: 10
-    parking: 8
-    pets: 7
-    outdoor: 7
-    move_in: 8
-    lease: 5
+    neighborhood: 25
+    bathroom_match: 15
+    sqft: 12
+    laundry: 10
+    building_type: 8
+    transit: 8
+    parking: 6
+    pets: 5
+    outdoor: 5
+    move_in: 6
+    lease: 3
     price: 5
 
 notifications:

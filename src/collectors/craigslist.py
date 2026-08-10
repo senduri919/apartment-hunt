@@ -68,10 +68,10 @@ class CraigslistCollector(BaseCollector):
         listings = []
         for entry in feed.entries:
             listing = self._parse_entry(entry)
-            if listing and self._matches_neighborhood(listing):
+            if listing:
                 listings.append(listing)
 
-        logger.info(f"Craigslist: found {len(listings)} listings matching neighborhoods")
+        logger.info(f"Craigslist: found {len(listings)} listings from RSS")
 
         for listing in listings[:20]:
             self._enrich_listing(listing)
@@ -258,15 +258,12 @@ class CraigslistCollector(BaseCollector):
 
         logger.info(f"Craigslist HTML fallback: {len(listings)} listings before neighborhood filter")
 
-        enriched = []
         for listing in listings[:30]:
             self._enrich_listing(listing)
-            if self._matches_neighborhood(listing):
-                enriched.append(listing)
             time.sleep(random.uniform(1.5, 3.0))
 
-        logger.info(f"Craigslist HTML fallback: {len(enriched)} listings after enrichment + neighborhood filter")
-        return enriched
+        logger.info(f"Craigslist HTML fallback: {len(listings)} listings after enrichment")
+        return listings
 
     def _matches_neighborhood(self, listing: Listing) -> bool:
         if listing.neighborhood:

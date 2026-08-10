@@ -126,6 +126,8 @@ def process_listings(
             listing,
             config.scoring.weights,
             config.search.move_in_deadline,
+            preferred_bathrooms=config.search.preferred_bathrooms,
+            neighborhoods=config.search.neighborhoods,
         )
 
     collab = load_collaboration()
