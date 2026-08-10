@@ -15,9 +15,14 @@ APIFY_ACTORS = [
     "stealth_mode~zumper-property-search-scraper",
 ]
 
+ZUMPER_SEARCH_URLS = [
+    "https://www.zumper.com/apartments-for-rent/mission-district-san-francisco-ca/4+-beds?price-max=10000&bathrooms-min=2",
+    "https://www.zumper.com/apartments-for-rent/hayes-valley-san-francisco-ca/4+-beds?price-max=10000&bathrooms-min=2",
+]
+
 ACTOR_INPUTS = {
     "benthepythondev~zumper-rental-scraper": {
-        "searchUrl": "https://www.zumper.com/apartments-for-rent/san-francisco-ca/4+-beds?price-max=10000&bathrooms-min=2",
+        "searchUrl": ZUMPER_SEARCH_URLS[0],
         "maxItems": 50,
     },
     "stealth_mode~zumper-property-search-scraper": {
@@ -49,25 +54,47 @@ class ZumperCollector(BaseCollector):
             "Content-Type": "application/json",
         }
 
+        all_results = []
         for actor_id in APIFY_ACTORS:
-            run_input = ACTOR_INPUTS.get(actor_id, {})
-            results = self._try_actor(actor_id, run_input, headers)
-            if results is not None:
-                break
-        else:
-            logger.warning("Zumper: all Apify actors failed or require payment")
-            return []
+            if actor_id == "benthepythondev~zumper-rental-scraper":
+                for search_url in ZUMPER_SEARCH_URLS:
+                    run_input = {"searchUrl": search_url, "maxItems": 50}
+                    results = self._try_actor(actor_id, run_input, headers)
+                    if results is None:
+                        break
+                    all_results.extend(results)
+                if all_results:
+                    break
+                if results is None:
+                    continue
+            else:
+                run_input = ACTOR_INPUTS.get(actor_id, {})
+                results = self._try_actor(actor_id, run_input, headers)
+                if results is None:
+                    continue
+                all_results.extend(results)
+                if all_results:
+                    break
 
-        if not results:
+        if not all_results:
+            logger.warning("Zumper: no results from any actor/URL combination")
             return []
 
         listings = []
-        for item in results:
+        filtered_count = 0
+        for item in all_results:
             listing = self._parse_listing(item)
-            if listing and self._matches_filters(listing):
+            if not listing:
+                continue
+            if self._matches_filters(listing):
                 listings.append(listing)
+            else:
+                filtered_count += 1
+                if filtered_count <= 3:
+                    logger.info(f"Zumper filtered out: price={listing.price} beds={listing.bedrooms} "
+                                f"zip={listing.zip_code} hood={listing.neighborhood}")
 
-        logger.info(f"Zumper: found {len(listings)} matching listings")
+        logger.info(f"Zumper: found {len(listings)} matching listings ({len(all_results)} raw)")
         return listings
 
     def _try_actor(self, actor_id: str, run_input: dict, headers: dict) -> list | None:
