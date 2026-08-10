@@ -46,7 +46,7 @@ collectors:
     max_calls_per_month: 45
   zumper:
     enabled: true
-    max_calls_per_month: 8
+    max_calls_per_month: 60
   redfin:
     enabled: false
     max_calls_per_month: 45

@@ -20,8 +20,6 @@ class ZillowCollector(BaseCollector):
     API_BASE = f"https://{API_HOST}"
 
     SEARCH_URLS = [
-        "https://www.zillow.com/mission-district-san-francisco-ca/rentals/4-_beds/",
-        "https://www.zillow.com/hayes-valley-san-francisco-ca/rentals/4-_beds/",
         "https://www.zillow.com/san-francisco-ca/rentals/4-_beds/",
     ]
 
