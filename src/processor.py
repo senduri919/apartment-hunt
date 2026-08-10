@@ -120,6 +120,10 @@ def process_listings(
             merged.append(raw)
             existing_index[raw.id] = raw
 
+    current_ids = {r.id for r in raw_listings}
+    valid_zips = set(config.search.zip_codes)
+    target_hoods = {h.lower() for h in config.search.neighborhoods}
+
     for listing in merged:
         extract_features(listing)
         listing.score = score_listing(
@@ -129,6 +133,13 @@ def process_listings(
             preferred_bathrooms=config.search.preferred_bathrooms,
             neighborhoods=config.search.neighborhoods,
         )
+
+        if listing.id not in current_ids:
+            hood_match = listing.neighborhood and listing.neighborhood.lower() in target_hoods
+            zip_match = listing.zip_code and listing.zip_code in valid_zips
+            bed_match = config.search.min_bedrooms <= listing.bedrooms <= config.search.max_bedrooms
+            if not (hood_match or zip_match) or not bed_match:
+                listing.is_active = False
 
     collab = load_collaboration()
     for listing in merged:
@@ -140,9 +151,10 @@ def process_listings(
 
     merged.sort(key=lambda l: (l.score or 0), reverse=True)
 
+    active_count = sum(1 for l in merged if l.is_active)
     logger.info(
         f"Processed: {len(merged)} total, {len(new_listings)} new, "
-        f"{sum(1 for l in merged if l.is_active)} active"
+        f"{active_count} active"
     )
 
     return merged, new_listings
