@@ -148,48 +148,65 @@ class ZumperCollector(BaseCollector):
         return []
 
     def _parse_listing(self, item: dict) -> Listing | None:
-        address = item.get("address", "") or item.get("streetAddress", "")
-        price = item.get("price") or item.get("rent")
+        address = item.get("address", "") or item.get("streetAddress", "") or item.get("street", "")
 
+        price = (item.get("price") or item.get("rent")
+                 or item.get("price_min") or item.get("price_max"))
         if not price:
             return None
-
         if isinstance(price, str):
             try:
                 price = int(float(price.replace("$", "").replace(",", "").split("/")[0].split("-")[0]))
             except (ValueError, TypeError):
                 return None
 
+        bedrooms = item.get("bedrooms") or item.get("beds_max") or item.get("beds_min") or 0
+        bathrooms = item.get("bathrooms") or item.get("baths_max") or item.get("baths_min") or 0
+
         listing = Listing(
             source="zumper",
-            source_id=str(item.get("id", "")),
+            source_id=str(item.get("id", item.get("listing_id", ""))),
             source_url=item.get("url", ""),
             address=address,
+            neighborhood=item.get("neighborhood", ""),
             city=item.get("city", "San Francisco"),
             state=item.get("state", "CA"),
-            zip_code=str(item.get("zipCode", item.get("zip", ""))),
+            zip_code=str(item.get("zipCode", item.get("zipcode", item.get("zip", "")))),
             latitude=item.get("latitude") or item.get("lat"),
             longitude=item.get("longitude") or item.get("lng"),
             price=int(price),
-            bedrooms=int(item.get("bedrooms", 0) or 0),
-            bathrooms=float(item.get("bathrooms", 0) or 0),
+            bedrooms=int(bedrooms or 0),
+            bathrooms=float(bathrooms or 0),
             sqft=item.get("sqft") or item.get("squareFeet"),
-            property_type=item.get("propertyType") or item.get("buildingType"),
-            description=item.get("description", ""),
+            property_type=item.get("propertyType") or item.get("property_type") or item.get("buildingType"),
+            description=item.get("description", "") or item.get("name", ""),
         )
+
+        if item.get("date_available"):
+            listing.available_date = item["date_available"]
 
         images = item.get("images", []) or item.get("photos", [])
         if isinstance(images, list):
             listing.images = [img if isinstance(img, str) else img.get("url", "") for img in images[:10]]
 
         if item.get("amenities"):
-            amenities_lower = " ".join(str(a).lower() for a in item["amenities"])
+            amenities = item["amenities"]
+            if isinstance(amenities, list):
+                amenities_lower = " ".join(str(a).lower() for a in amenities)
+            elif isinstance(amenities, dict):
+                amenities_lower = " ".join(str(v).lower() for v in amenities.values())
+            else:
+                amenities_lower = str(amenities).lower()
             if "laundry in unit" in amenities_lower or "washer" in amenities_lower:
                 listing.has_in_unit_laundry = True
             if "parking" in amenities_lower or "garage" in amenities_lower:
                 listing.has_parking = True
-            if "pet" in amenities_lower or "dog" in amenities_lower or "cat" in amenities_lower:
-                listing.is_pet_friendly = True
+
+        pets = item.get("pets_allowed")
+        if pets is True or (isinstance(pets, str) and pets.lower() not in ("no", "false", "none", "")):
+            listing.is_pet_friendly = True
+        elif pets is False:
+            listing.is_pet_friendly = False
 
         listing.id = generate_listing_id(listing.address or str(listing.source_id), listing.price, listing.bedrooms)
         self._detect_neighborhood(listing)
@@ -198,18 +215,19 @@ class ZumperCollector(BaseCollector):
     def _detect_neighborhood(self, listing: Listing):
         addr_lower = listing.address.lower()
         zip_code = listing.zip_code
-        if zip_code in {"94110", "94114"} or "mission" in addr_lower:
+        hood = (listing.neighborhood or "").lower()
+        if zip_code in {"94110", "94114"} or "mission" in addr_lower or "mission" in hood:
             listing.neighborhood = "Mission District"
-        elif zip_code in {"94102", "94103"} or "hayes" in addr_lower:
+        elif zip_code in {"94102", "94103"} or "hayes" in addr_lower or "hayes" in hood:
             listing.neighborhood = "Hayes Valley"
 
     def _matches_filters(self, listing: Listing) -> bool:
         search = self.config.search
         if listing.price > search.max_price:
             return False
-        if listing.bedrooms < search.min_bedrooms:
+        if listing.bedrooms and listing.bedrooms < search.min_bedrooms:
             return False
-        if listing.bathrooms < search.min_bathrooms:
+        if listing.bathrooms and listing.bathrooms < search.min_bathrooms:
             return False
         valid_zips = set(search.zip_codes)
         if listing.zip_code and listing.zip_code not in valid_zips and not listing.neighborhood:
