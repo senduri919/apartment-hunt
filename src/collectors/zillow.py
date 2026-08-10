@@ -110,44 +110,55 @@ class ZillowCollector(BaseCollector):
             if isinstance(val, list) and val:
                 return val
             if isinstance(val, dict):
-                for sub_key in ("listResults", "searchResults", "results", "properties"):
+                for sub_key in ("listings", "listResults", "searchResults",
+                                "results", "properties", "items"):
                     sub = val.get(sub_key)
                     if isinstance(sub, list) and sub:
                         return sub
         return []
 
     def _parse_listing(self, item: dict) -> Listing | None:
-        address = item.get("address", "") or item.get("streetAddress", "")
-        price = item.get("price") or item.get("rentZestimate")
-        if not price:
-            price_str = str(item.get("price", "0"))
-            price_str = price_str.replace("$", "").replace(",", "").replace("+", "").split("/")[0]
-            try:
-                price = int(float(price_str))
-            except (ValueError, TypeError):
-                return None
-
+        address = (item.get("address", "") or item.get("addressStreet", "")
+                   or item.get("streetAddress", ""))
+        price = item.get("price") or item.get("rentZestimate") or item.get("units")
+        if isinstance(price, list) and price:
+            unit_prices = []
+            for u in price:
+                p = u.get("price")
+                if p:
+                    unit_prices.append(p)
+            price = min(unit_prices) if unit_prices else None
         if isinstance(price, str):
             try:
-                price = int(float(price.replace("$", "").replace(",", "").split("/")[0]))
+                price = int(float(price.replace("$", "").replace(",", "").replace("+", "").split("/")[0]))
             except (ValueError, TypeError):
                 return None
+        if not price:
+            return None
+
+        detail_url = item.get("detailUrl", "")
+        if detail_url and detail_url.startswith("/"):
+            detail_url = f"https://www.zillow.com{detail_url}"
+        if not detail_url:
+            zpid = item.get("zpid", "")
+            if zpid:
+                detail_url = f"https://www.zillow.com/homedetails/{zpid}_zpid/"
 
         listing = Listing(
             source="zillow",
-            source_id=str(item.get("zpid", "")),
-            source_url=item.get("detailUrl", "") or f"https://www.zillow.com/homedetails/{item.get('zpid', '')}_zpid/",
+            source_id=str(item.get("zpid", item.get("id", ""))),
+            source_url=detail_url,
             address=address,
             city=item.get("city", "San Francisco"),
             state=item.get("state", "CA"),
-            zip_code=str(item.get("zipcode", "")),
-            latitude=item.get("latitude"),
-            longitude=item.get("longitude"),
+            zip_code=str(item.get("zipcode", item.get("addressZipcode", ""))),
+            latitude=item.get("latitude") or (item.get("latLong", {}).get("latitude") if isinstance(item.get("latLong"), dict) else None),
+            longitude=item.get("longitude") or (item.get("latLong", {}).get("longitude") if isinstance(item.get("latLong"), dict) else None),
             price=int(price),
-            bedrooms=int(item.get("bedrooms", 0) or 0),
-            bathrooms=float(item.get("bathrooms", 0) or 0),
-            sqft=item.get("livingArea") or item.get("area"),
-            property_type=item.get("homeType"),
+            bedrooms=int(item.get("bedrooms", item.get("beds", 0)) or 0),
+            bathrooms=float(item.get("bathrooms", item.get("baths", 0)) or 0),
+            sqft=item.get("livingArea") or item.get("area") or item.get("sqft"),
+            property_type=item.get("homeType") or item.get("propertyType"),
         )
 
         if item.get("imgSrc"):

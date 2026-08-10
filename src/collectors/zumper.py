@@ -11,10 +11,23 @@ from src.models import Listing, generate_listing_id
 logger = logging.getLogger(__name__)
 
 APIFY_ACTORS = [
-    "scrapemind~zumpercom-scraper",
     "benthepythondev~zumper-rental-scraper",
     "stealth_mode~zumper-property-search-scraper",
 ]
+
+ACTOR_INPUTS = {
+    "benthepythondev~zumper-rental-scraper": {
+        "searchUrl": "https://www.zumper.com/apartments-for-rent/san-francisco-ca/4+-beds?price-max=10000&bathrooms-min=2",
+        "maxItems": 50,
+    },
+    "stealth_mode~zumper-property-search-scraper": {
+        "location": "San Francisco, CA",
+        "minBedrooms": 4,
+        "minBathrooms": 2,
+        "maxPrice": 10000,
+        "maxResults": 50,
+    },
+}
 
 
 class ZumperCollector(BaseCollector):
@@ -31,22 +44,13 @@ class ZumperCollector(BaseCollector):
         if not self.check_budget():
             return []
 
-        search = self.config.search
-        run_input = {
-            "city": search.city,
-            "state": search.state,
-            "minBedrooms": search.min_bedrooms,
-            "minBathrooms": search.min_bathrooms,
-            "maxPrice": search.max_price,
-            "maxResults": 100,
-        }
-
         headers = {
             "Authorization": f"Bearer {self.config.apify_api_key}",
             "Content-Type": "application/json",
         }
 
         for actor_id in APIFY_ACTORS:
+            run_input = ACTOR_INPUTS.get(actor_id, {})
             results = self._try_actor(actor_id, run_input, headers)
             if results is not None:
                 break
@@ -67,7 +71,7 @@ class ZumperCollector(BaseCollector):
         return listings
 
     def _try_actor(self, actor_id: str, run_input: dict, headers: dict) -> list | None:
-        logger.info(f"Zumper: trying Apify actor {actor_id}")
+        logger.info(f"Zumper: trying Apify actor {actor_id} with input: {run_input}")
         start_url = f"https://api.apify.com/v2/acts/{actor_id}/runs"
 
         try:
@@ -121,7 +125,13 @@ class ZumperCollector(BaseCollector):
                             headers=headers, params=token_param, timeout=30,
                         )
                         items_resp.raise_for_status()
-                        return items_resp.json()
+                        items = items_resp.json()
+                        logger.info(f"Zumper: dataset returned {len(items)} items")
+                        if items:
+                            first = items[0]
+                            logger.info(f"Zumper first item keys: {list(first.keys()) if isinstance(first, dict) else type(first)}")
+                            logger.info(f"Zumper first item preview: {str(first)[:400]}")
+                        return items
                     return []
 
                 if status in ("FAILED", "ABORTED", "TIMED-OUT"):
