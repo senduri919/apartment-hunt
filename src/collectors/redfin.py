@@ -46,11 +46,19 @@ class RedfinCollector(BaseCollector):
                 logger.warning("Redfin: rate limited")
                 return []
 
+            if resp.status_code == 403:
+                logger.error(f"Redfin: 403 Forbidden — you may need to subscribe to the "
+                             f"Redfin provider on RapidAPI. Response: {resp.text[:300]}")
+                return []
+
             resp.raise_for_status()
             data = resp.json()
         except requests.RequestException as e:
             logger.error(f"Redfin API error: {e}")
             return []
+
+        if isinstance(data, dict):
+            logger.info(f"Redfin response keys: {list(data.keys())}")
 
         props = data.get("properties", data.get("results", data.get("data", [])))
         if not isinstance(props, list):

@@ -52,6 +52,15 @@ class ZumperCollector(BaseCollector):
                 logger.warning("Zumper/Apify: rate limited")
                 return []
 
+            if resp.status_code in (401, 403):
+                logger.error(f"Zumper/Apify auth error ({resp.status_code}): {resp.text[:300]}")
+                token_url = f"{start_url}?token={self.config.apify_api_key}"
+                logger.info("Retrying Apify with token query param")
+                resp = requests.post(token_url, json=run_input, timeout=30)
+                if resp.status_code in (401, 403):
+                    logger.error(f"Zumper/Apify retry failed ({resp.status_code}): {resp.text[:300]}")
+                    return []
+
             resp.raise_for_status()
             run_data = resp.json().get("data", {})
             run_id = run_data.get("id")
@@ -60,7 +69,7 @@ class ZumperCollector(BaseCollector):
                 logger.error("Zumper: failed to start Apify actor run")
                 return []
 
-            results = self._wait_for_results(run_id, headers)
+            results = self._wait_for_results(run_id, headers, self.config.apify_api_key)
             if not results:
                 return []
 
@@ -77,23 +86,25 @@ class ZumperCollector(BaseCollector):
         logger.info(f"Zumper: found {len(listings)} matching listings")
         return listings
 
-    def _wait_for_results(self, run_id: str, headers: dict, max_wait: int = 120) -> list:
+    def _wait_for_results(self, run_id: str, headers: dict, token: str, max_wait: int = 120) -> list:
         dataset_url = f"https://api.apify.com/v2/actor-runs/{run_id}"
+        token_param = {"token": token}
         elapsed = 0
         poll_interval = 10
 
         while elapsed < max_wait:
             try:
-                resp = requests.get(dataset_url, headers=headers, timeout=15)
+                resp = requests.get(dataset_url, headers=headers, params=token_param, timeout=15)
                 resp.raise_for_status()
                 status = resp.json().get("data", {}).get("status")
+                logger.info(f"Apify run status: {status}")
 
                 if status == "SUCCEEDED":
                     dataset_id = resp.json()["data"].get("defaultDatasetId")
                     if dataset_id:
                         items_resp = requests.get(
                             f"https://api.apify.com/v2/datasets/{dataset_id}/items",
-                            headers=headers, timeout=30,
+                            headers=headers, params=token_param, timeout=30,
                         )
                         items_resp.raise_for_status()
                         return items_resp.json()

@@ -51,6 +51,11 @@ class RentCastCollector(BaseCollector):
                 logger.warning("RentCast: rate limited")
                 return []
 
+            if resp.status_code == 403:
+                logger.error(f"RentCast: 403 Forbidden — the listings endpoint may not be "
+                             f"available on the free tier. Response: {resp.text[:300]}")
+                return []
+
             resp.raise_for_status()
             data = resp.json()
 

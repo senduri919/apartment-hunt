@@ -16,6 +16,19 @@ class ZillowCollector(BaseCollector):
     def name(self) -> str:
         return "zillow"
 
+    ENDPOINTS = [
+        {
+            "url": "https://real-estate-zillow-com.p.rapidapi.com/propertyExtendedSearch",
+            "host": "real-estate-zillow-com.p.rapidapi.com",
+            "param_style": "standard",
+        },
+        {
+            "url": "https://real-estate-zillow-com.p.rapidapi.com/v1/search/rent",
+            "host": "real-estate-zillow-com.p.rapidapi.com",
+            "param_style": "v1",
+        },
+    ]
+
     def collect(self) -> list[Listing]:
         if not self.config.rapidapi_key:
             logger.warning("Zillow: no RapidAPI key configured, skipping")
@@ -24,26 +37,48 @@ class ZillowCollector(BaseCollector):
         if not self.check_budget():
             return []
 
+        for endpoint in self.ENDPOINTS:
+            listings = self._try_endpoint(endpoint)
+            if listings:
+                return listings
+
+        logger.warning("Zillow: no listings found from any endpoint")
+        return []
+
+    def _try_endpoint(self, endpoint: dict) -> list[Listing]:
         search = self.config.search
-        url = "https://real-estate-zillow-com.p.rapidapi.com/v1/search/rent"
-        params = {
-            "location": f"{search.city}, {search.state}",
-            "property_types": "apartment",
-            "min_price": 1000,
-            "max_price": search.max_price,
-            "min_beds": search.min_bedrooms,
-            "min_baths": search.min_bathrooms,
-            "sort": "relevant",
-            "page": 1,
-        }
+        url = endpoint["url"]
+
+        if endpoint["param_style"] == "standard":
+            params = {
+                "location": f"{search.city}, {search.state}",
+                "status_type": "ForRent",
+                "home_type": "Apartments,Houses,Multi-family,Townhomes",
+                "rentMinPrice": 1000,
+                "rentMaxPrice": search.max_price,
+                "bedsMin": search.min_bedrooms,
+                "bathsMin": search.min_bathrooms,
+                "page": "1",
+            }
+        else:
+            params = {
+                "location": f"{search.city}, {search.state}",
+                "property_types": "apartment",
+                "min_price": 1000,
+                "max_price": search.max_price,
+                "min_beds": search.min_bedrooms,
+                "min_baths": search.min_bathrooms,
+                "sort": "relevant",
+                "page": 1,
+            }
+
         headers = {
             "x-rapidapi-key": self.config.rapidapi_key,
-            "x-rapidapi-host": "real-estate-zillow-com.p.rapidapi.com",
-            "Content-Type": "application/json",
+            "x-rapidapi-host": endpoint["host"],
         }
 
         try:
-            logger.info("Fetching Zillow listings via RapidAPI")
+            logger.info(f"Zillow: trying {url}")
             resp = requests.get(url, params=params, headers=headers, timeout=30)
             self.record_api_call()
 
@@ -51,15 +86,30 @@ class ZillowCollector(BaseCollector):
                 logger.warning("Zillow: rate limited")
                 return []
 
+            if resp.status_code in (403, 404):
+                logger.warning(f"Zillow: {resp.status_code} on {url}, trying next endpoint")
+                return []
+
             resp.raise_for_status()
             data = resp.json()
         except requests.RequestException as e:
-            logger.error(f"Zillow API error: {e}")
+            logger.error(f"Zillow API error on {url}: {e}")
             return []
 
-        props = data.get("props", [])
-        if not props and isinstance(data, list):
-            props = data
+        if isinstance(data, dict):
+            logger.info(f"Zillow response keys: {list(data.keys())}")
+            for key in ("totalResultCount", "totalPages", "total", "count", "resultsPerPage"):
+                if key in data:
+                    logger.info(f"Zillow {key}: {data[key]}")
+
+        props = self._extract_results(data)
+        if props:
+            logger.info(f"Zillow: extracted {len(props)} raw results from {url}")
+        else:
+            logger.warning(f"Zillow: 0 results from {url}")
+            snippet = str(data)[:500]
+            logger.info(f"Zillow response preview: {snippet}")
+            return []
 
         listings = []
         for item in props:
@@ -69,6 +119,23 @@ class ZillowCollector(BaseCollector):
 
         logger.info(f"Zillow: found {len(listings)} matching listings")
         return listings
+
+    def _extract_results(self, data) -> list:
+        if isinstance(data, list):
+            return data
+        if not isinstance(data, dict):
+            return []
+        for key in ("props", "results", "searchResults", "properties",
+                     "listings", "data", "items", "list", "cat1"):
+            val = data.get(key)
+            if isinstance(val, list) and val:
+                return val
+            if isinstance(val, dict):
+                for sub_key in ("listResults", "searchResults", "results", "properties"):
+                    sub = val.get(sub_key)
+                    if isinstance(sub, list) and sub:
+                        return sub
+        return []
 
     def _parse_listing(self, item: dict) -> Listing | None:
         address = item.get("address", "") or item.get("streetAddress", "")

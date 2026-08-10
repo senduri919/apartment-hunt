@@ -48,11 +48,22 @@ class CraigslistCollector(BaseCollector):
         url = f"https://sfbay.craigslist.org/search/sfc/apa?{urlencode(params)}"
 
         logger.info(f"Fetching Craigslist RSS: {url}")
-        feed = feedparser.parse(url)
 
-        if feed.bozo and not feed.entries:
-            logger.error(f"Craigslist RSS parse error: {feed.bozo_exception}")
-            return []
+        try:
+            headers = {"User-Agent": random.choice(USER_AGENTS)}
+            resp = requests.get(url, headers=headers, timeout=30)
+            resp.raise_for_status()
+            feed = feedparser.parse(resp.content)
+        except requests.RequestException as e:
+            logger.error(f"Craigslist fetch error: {e}")
+            feed = feedparser.parse(url)
+
+        if feed.bozo:
+            logger.warning(f"Craigslist RSS bozo: {feed.bozo_exception}")
+
+        if not feed.entries:
+            logger.warning("Craigslist: no entries found in RSS feed, trying HTML fallback")
+            return self._collect_html_fallback()
 
         listings = []
         for entry in feed.entries:
@@ -62,7 +73,7 @@ class CraigslistCollector(BaseCollector):
 
         logger.info(f"Craigslist: found {len(listings)} listings matching neighborhoods")
 
-        for listing in listings:
+        for listing in listings[:20]:
             self._enrich_listing(listing)
             time.sleep(random.uniform(1.5, 3.0))
 
@@ -159,6 +170,76 @@ class CraigslistCollector(BaseCollector):
 
         except requests.RequestException as e:
             logger.debug(f"Failed to enrich listing {listing.source_url}: {e}")
+
+    def _collect_html_fallback(self) -> list[Listing]:
+        search = self.config.search
+        params = {
+            "min_bedrooms": search.min_bedrooms,
+            "min_bathrooms": search.min_bathrooms,
+            "max_price": search.max_price,
+            "availabilityMode": 0,
+        }
+        url = f"https://sfbay.craigslist.org/search/sfc/apa?{urlencode(params)}"
+
+        try:
+            headers = {"User-Agent": random.choice(USER_AGENTS)}
+            resp = requests.get(url, headers=headers, timeout=30)
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            logger.error(f"Craigslist HTML fallback error: {e}")
+            return []
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        listings = []
+
+        for result in soup.select(".cl-static-search-result, .result-row, li.cl-search-result"):
+            try:
+                link_el = result.select_one("a[href]")
+                if not link_el:
+                    continue
+                link = link_el.get("href", "")
+                if not link.startswith("http"):
+                    link = f"https://sfbay.craigslist.org{link}"
+
+                title = link_el.get_text(strip=True) or result.get_text(strip=True)
+
+                price = self._extract_price(title)
+                if not price:
+                    price_el = result.select_one(".priceinfo, .result-price")
+                    if price_el:
+                        price = self._extract_price(price_el.get_text())
+                if not price or price > search.max_price:
+                    continue
+
+                bedrooms = self._extract_bedrooms(title) or search.min_bedrooms
+                neighborhood = self._detect_neighborhood(title)
+
+                listing = Listing(
+                    source="craigslist",
+                    source_id=link.split("/")[-1].replace(".html", ""),
+                    source_url=link,
+                    address=self._extract_location(title, {}),
+                    neighborhood=neighborhood,
+                    price=price,
+                    bedrooms=bedrooms,
+                    description=title,
+                )
+                listing.id = generate_listing_id(listing.address or link, listing.price, listing.bedrooms)
+
+                if self._matches_neighborhood(listing):
+                    listings.append(listing)
+
+            except Exception as e:
+                logger.debug(f"Craigslist HTML parse error for result: {e}")
+                continue
+
+        logger.info(f"Craigslist HTML fallback: found {len(listings)} listings")
+
+        for listing in listings[:20]:
+            self._enrich_listing(listing)
+            time.sleep(random.uniform(1.5, 3.0))
+
+        return listings
 
     def _matches_neighborhood(self, listing: Listing) -> bool:
         if listing.neighborhood:
