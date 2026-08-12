@@ -248,9 +248,9 @@ class ZumperCollector(BaseCollector):
         search = self.config.search
         if listing.price > search.max_price:
             return False
-        if listing.bedrooms and listing.bedrooms < search.min_bedrooms:
+        if listing.bedrooms < search.min_bedrooms:
             return False
-        if listing.bedrooms and listing.bedrooms > search.max_bedrooms:
+        if listing.bedrooms > search.max_bedrooms:
             return False
         if listing.bathrooms and listing.bathrooms < search.min_bathrooms:
             return False
