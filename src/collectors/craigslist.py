@@ -38,6 +38,10 @@ NEIGHBORHOOD_KEYWORDS = {
     "financial district": ["financial district", "fidi", "battery st", "front st",
                            "sansome", "montgomery st", "california st", "pine st",
                            "bush st", "embarcadero"],
+    "nob hill": ["nob hill", "grace cathedral", "huntington park",
+                 "mason st", "taylor st", "jones st"],
+    "soma": ["soma", "south of market", "townsend", "brannan",
+             "bluxome", "howard st"],
 }
 
 NEIGHBORHOOD_BOUNDS = {
@@ -45,6 +49,8 @@ NEIGHBORHOOD_BOUNDS = {
     "Hayes Valley": {"lat": (37.770, 37.780), "lng": (-122.442, -122.416)},
     "NoPa": {"lat": (37.771, 37.779), "lng": (-122.452, -122.438)},
     "Financial District": {"lat": (37.790, 37.798), "lng": (-122.403, -122.394)},
+    "Nob Hill": {"lat": (37.790, 37.796), "lng": (-122.419, -122.408)},
+    "SoMa": {"lat": (37.775, 37.790), "lng": (-122.415, -122.390)},
 }
 
 
@@ -309,6 +315,8 @@ class CraigslistCollector(BaseCollector):
         "hayes valley": "Hayes Valley",
         "nopa": "NoPa",
         "financial district": "Financial District",
+        "nob hill": "Nob Hill",
+        "soma": "SoMa",
     }
 
     def _detect_neighborhood(self, text: str) -> str:
