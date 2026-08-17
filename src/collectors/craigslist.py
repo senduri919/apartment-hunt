@@ -32,6 +32,9 @@ NEIGHBORHOOD_KEYWORDS = {
     "hayes valley": ["hayes valley", "hayes st", "patricia's green", "hayes",
                      "octavia", "laguna st", "buchanan st", "fell st",
                      "oak st", "grove st", "ivy st", "linden st"],
+    "nopa": ["nopa", "north of panhandle", "panhandle", "broderick st",
+             "divisadero", "masonic ave", "central ave", "lyon st",
+             "baker st", "mcallister st"],
     "financial district": ["financial district", "fidi", "battery st", "front st",
                            "sansome", "montgomery st", "california st", "pine st",
                            "bush st", "embarcadero"],
@@ -39,7 +42,8 @@ NEIGHBORHOOD_KEYWORDS = {
 
 NEIGHBORHOOD_BOUNDS = {
     "Mission District": {"lat": (37.748, 37.766), "lng": (-122.427, -122.406)},
-    "Hayes Valley": {"lat": (37.770, 37.780), "lng": (-122.432, -122.416)},
+    "Hayes Valley": {"lat": (37.770, 37.780), "lng": (-122.442, -122.416)},
+    "NoPa": {"lat": (37.771, 37.779), "lng": (-122.452, -122.438)},
     "Financial District": {"lat": (37.790, 37.798), "lng": (-122.403, -122.394)},
 }
 
@@ -300,11 +304,18 @@ class CraigslistCollector(BaseCollector):
                 return True
         return False
 
+    HOOD_DISPLAY_NAMES = {
+        "mission district": "Mission District",
+        "hayes valley": "Hayes Valley",
+        "nopa": "NoPa",
+        "financial district": "Financial District",
+    }
+
     def _detect_neighborhood(self, text: str) -> str:
         text_lower = text.lower()
         for hood, keywords in NEIGHBORHOOD_KEYWORDS.items():
             if any(kw in text_lower for kw in keywords):
-                return hood.title()
+                return self.HOOD_DISPLAY_NAMES.get(hood, hood.title())
         return ""
 
     def _detect_neighborhood_by_coords(self, listing: Listing):

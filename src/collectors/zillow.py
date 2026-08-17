@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 NEIGHBORHOOD_BOUNDS = {
     "Mission District": {"lat": (37.748, 37.766), "lng": (-122.427, -122.406)},
-    "Hayes Valley": {"lat": (37.770, 37.780), "lng": (-122.432, -122.416)},
+    "Hayes Valley": {"lat": (37.770, 37.780), "lng": (-122.442, -122.416)},
+    "NoPa": {"lat": (37.771, 37.779), "lng": (-122.452, -122.438)},
     "Financial District": {"lat": (37.790, 37.798), "lng": (-122.403, -122.394)},
 }
 
@@ -237,6 +238,8 @@ class ZillowCollector(BaseCollector):
             listing.neighborhood = "Mission District"
         elif zip_code in {"94102", "94103"} or "hayes" in addr_lower:
             listing.neighborhood = "Hayes Valley"
+        elif zip_code == "94117" or "nopa" in addr_lower or "panhandle" in addr_lower or "broderick" in addr_lower or "divisadero" in addr_lower:
+            listing.neighborhood = "NoPa"
         elif zip_code in {"94104", "94111"} or "financial" in addr_lower or "fidi" in addr_lower:
             listing.neighborhood = "Financial District"
 
