@@ -306,7 +306,7 @@ class CraigslistCollector(BaseCollector):
         text = f"{listing.address} {listing.description}".lower()
         for hood, keywords in NEIGHBORHOOD_KEYWORDS.items():
             if any(kw in text for kw in keywords):
-                listing.neighborhood = hood.title()
+                listing.neighborhood = self.HOOD_DISPLAY_NAMES.get(hood, hood.title())
                 return True
         return False
 
