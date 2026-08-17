@@ -4,7 +4,10 @@ search:
   neighborhoods:
     - "Mission District"
     - "Hayes Valley"
+    - "NoPa"
     - "Financial District"
+    - "Nob Hill"
+    - "SoMa"
   zip_codes:
     - "94110"
     - "94102"
@@ -12,6 +15,11 @@ search:
     - "94114"
     - "94104"
     - "94111"
+    - "94117"
+    - "94108"
+    - "94109"
+    - "94105"
+    - "94107"
   min_bedrooms: 4
   max_bedrooms: 4
   min_bathrooms: 1
