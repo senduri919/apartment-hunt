@@ -101,6 +101,7 @@ def process_listings(
 ) -> tuple[list[Listing], list[Listing]]:
     existing_index = {l.id: l for l in existing_listings}
     seen_ids = set()
+    matched_ids = set()
     merged = list(existing_listings)
     new_listings = []
 
@@ -115,12 +116,13 @@ def process_listings(
             merged[idx] = merge_listing(dup, raw)
             merged[idx].is_active = True
             merged[idx].last_seen = datetime.now(timezone.utc).isoformat()
+            matched_ids.add(merged[idx].id)
         else:
             new_listings.append(raw)
             merged.append(raw)
             existing_index[raw.id] = raw
 
-    current_ids = {r.id for r in raw_listings}
+    current_ids = {r.id for r in raw_listings} | matched_ids
     valid_zips = set(config.search.zip_codes)
     target_hoods = {h.lower() for h in config.search.neighborhoods}
 
