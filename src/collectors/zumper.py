@@ -13,8 +13,8 @@ NEIGHBORHOOD_BOUNDS = {
     "Hayes Valley": {"lat": (37.770, 37.780), "lng": (-122.442, -122.416)},
     "NoPa": {"lat": (37.771, 37.779), "lng": (-122.452, -122.438)},
     "Financial District": {"lat": (37.790, 37.798), "lng": (-122.403, -122.394)},
-    "Nob Hill": {"lat": (37.790, 37.796), "lng": (-122.419, -122.408)},
-    "SoMa": {"lat": (37.775, 37.790), "lng": (-122.415, -122.390)},
+    "Nob Hill": {"lat": (37.7885, 37.796), "lng": (-122.4223, -122.4083)},
+    "SoMa": {"lat": (37.770, 37.787), "lng": (-122.413, -122.388)},
 }
 
 logger = logging.getLogger(__name__)
@@ -240,9 +240,9 @@ class ZumperCollector(BaseCollector):
             listing.neighborhood = "NoPa"
         elif zip_code in {"94104", "94111"} or "financial" in addr_lower or "fidi" in hood:
             listing.neighborhood = "Financial District"
-        elif zip_code in {"94108", "94109"} or "nob hill" in addr_lower or "nob hill" in hood:
+        elif "nob hill" in addr_lower or "nob hill" in hood:
             listing.neighborhood = "Nob Hill"
-        elif zip_code in {"94105", "94107"} or "soma" in addr_lower or "soma" in hood or "south of market" in hood:
+        elif "soma" in addr_lower or "soma" in hood or "south of market" in hood:
             listing.neighborhood = "SoMa"
 
         if not listing.neighborhood and listing.latitude and listing.longitude:
