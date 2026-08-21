@@ -46,7 +46,10 @@ notifications:
   enabled: true
   from_email: "onboarding@resend.dev"
   recipients:
-    - "saienduri09@gmail.com"
+    - "drcutinha@gmail.com"
+    - "srikarcy@gmail.com"
+    - "srijit.rao@gmail.com"
+    - "enduri.sai@gmail.com"
   min_score_to_notify: 0
 
 collectors:
