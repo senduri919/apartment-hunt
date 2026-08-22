@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderScoreBreakdown(breakdown) {
     if (!breakdown) return '';
     const labels = {
+      neighborhood: 'Neighborhood', bathroom_match: 'Bathrooms',
       sqft: 'Square Footage', building_type: 'Building Type', laundry: 'In-Unit Laundry',
       transit: 'Transit', parking: 'Parking', pets: 'Pets',
       outdoor: 'Outdoor', move_in: 'Move-in Date', lease: 'Lease', price: 'Price'
