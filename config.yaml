@@ -8,18 +8,25 @@ search:
     - "Financial District"
     - "Nob Hill"
     - "SoMa"
+    - "Noe Valley"
+    - "Potrero Hill"
+    - "Mission Dolores"
+    - "Dolores Heights"
   zip_codes:
-    - "94110"
-    - "94102"
-    - "94103"
-    - "94114"
-    - "94104"
-    - "94111"
-    - "94117"
-    - "94108"
-    - "94109"
-    - "94105"
-    - "94107"
+    - "94110"  # Mission District, Potrero Hill (west slope)
+    - "94102"  # Hayes Valley
+    - "94103"  # SoMa / Civic Center / Mission Dolores (north)
+    - "94114"  # Castro / Noe Valley / Dolores Heights / Mission Dolores
+    - "94104"  # Financial District
+    - "94111"  # Financial District / Embarcadero
+    - "94117"  # NoPa / Haight
+    - "94108"  # Nob Hill / Chinatown
+    - "94109"  # Nob Hill / Russian Hill / Polk Gulch
+    - "94105"  # SoMa (east) / Rincon Hill
+    - "94107"  # SoMa / Potrero Hill / Dogpatch
+    - "94115"  # NoPa (north) / Western Addition
+    - "94131"  # Noe Valley (south) / Glen Park
+    - "94124"  # Potrero Hill (east) / Bayview
   min_bedrooms: 4
   max_bedrooms: 6
   min_bathrooms: 1

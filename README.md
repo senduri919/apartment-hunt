@@ -1,6 +1,6 @@
 # SF Apartment Hunt
 
-Automated apartment monitoring system for San Francisco. Scrapes Craigslist, Zillow, and Zumper every 12 hours for 4–6 bedroom apartments under $10k/month across six target neighborhoods. Deduplicates across sources, scores listings 0–100, deploys a static dashboard to GitHub Pages, and emails the group when new listings appear.
+Automated apartment monitoring system for San Francisco. Scrapes Craigslist and Zillow every 12 hours for 4–6 bedroom apartments under $10k/month across ten target neighborhoods. Deduplicates across sources, scores listings 0–100, deploys a static dashboard to GitHub Pages, and emails the group when new listings appear.
 
 **Live Dashboard**: [senduri919.github.io/apartment-hunt](https://senduri919.github.io/apartment-hunt)
 
@@ -12,7 +12,7 @@ Automated apartment monitoring system for San Francisco. Scrapes Craigslist, Zil
 | Bathrooms | 1+ minimum, 2+ preferred |
 | Max Price | $10,000/month |
 | Move-in | By October 31, 2026 |
-| Neighborhoods | Mission District, Hayes Valley, NoPa, Financial District, Nob Hill, SoMa |
+| Neighborhoods | Mission District, Hayes Valley, NoPa, Financial District, Nob Hill, SoMa, Noe Valley, Potrero Hill, Mission Dolores, Dolores Heights |
 
 ## Architecture
 
@@ -77,11 +77,11 @@ Automated apartment monitoring system for San Francisco. Scrapes Craigslist, Zil
 
 Listings are assigned to neighborhoods using a three-tier system (checked in order):
 
-1. **Zip code mapping** — Direct zip-to-neighborhood for Mission District (94110, 94114), Hayes Valley (94102, 94103), NoPa (94117), Financial District (94104, 94111). Nob Hill and SoMa intentionally skip this tier because their zip codes (94108/94109 and 94105/94107) cover large areas beyond those neighborhoods.
+1. **Keyword matching** — Address and description text is checked against neighborhood-specific keywords (street names, landmarks, colloquial names). More specific neighborhoods (Dolores Heights, Mission Dolores) are checked before broader ones (Mission District) to avoid misclassification in overlapping areas.
 
-2. **Keyword matching** — Address and description text is checked against neighborhood-specific keywords (street names, landmarks, colloquial names like "FiDi" or "SoMa").
+2. **Zip code mapping** — Only used for unambiguous zips: Mission District (94110), Hayes Valley (94102), NoPa (94117, 94115), Financial District (94104, 94111), Noe Valley (94131). Shared zips like 94114 (Castro/Noe Valley/Dolores Heights/Mission Dolores) and 94107 (SoMa/Potrero Hill) are intentionally skipped at this tier — keyword or coordinate matching handles them.
 
-3. **Coordinate bounding boxes** — If the listing has lat/lng, it's checked against bounding boxes for each neighborhood. This is the fallback for listings that don't match on zip or keywords.
+3. **Coordinate bounding boxes** — If the listing has lat/lng, it's checked against bounding boxes for each neighborhood. Boxes are ordered smallest-first so that specific neighborhoods (Dolores Heights, Mission Dolores) take priority over larger overlapping ones (Mission District).
 
 Listings that pass the zip code filter but don't get a confirmed neighborhood still appear in results — they just score lower on the neighborhood dimension (10–20 points instead of 100).
 

@@ -13,12 +13,40 @@ from src.models import Listing, generate_listing_id
 logger = logging.getLogger(__name__)
 
 NEIGHBORHOOD_BOUNDS = {
-    "Mission District": {"lat": (37.748, 37.766), "lng": (-122.427, -122.406)},
+    "Dolores Heights": {"lat": (37.754, 37.761), "lng": (-122.435, -122.425)},
+    "Mission Dolores": {"lat": (37.759, 37.769), "lng": (-122.430, -122.420)},
+    "Noe Valley": {"lat": (37.741, 37.757), "lng": (-122.440, -122.425)},
+    "Potrero Hill": {"lat": (37.750, 37.766), "lng": (-122.407, -122.390)},
+    "NoPa": {"lat": (37.770, 37.781), "lng": (-122.454, -122.437)},
+    "Financial District": {"lat": (37.790, 37.798), "lng": (-122.405, -122.390)},
+    "Nob Hill": {"lat": (37.7885, 37.798), "lng": (-122.4223, -122.4083)},
     "Hayes Valley": {"lat": (37.770, 37.780), "lng": (-122.442, -122.416)},
-    "NoPa": {"lat": (37.771, 37.779), "lng": (-122.452, -122.438)},
-    "Financial District": {"lat": (37.790, 37.798), "lng": (-122.403, -122.394)},
-    "Nob Hill": {"lat": (37.7885, 37.796), "lng": (-122.4223, -122.4083)},
     "SoMa": {"lat": (37.770, 37.787), "lng": (-122.413, -122.388)},
+    "Mission District": {"lat": (37.748, 37.766), "lng": (-122.427, -122.406)},
+}
+
+# Ordered specific → broad so first match wins
+NEIGHBORHOOD_KEYWORDS = [
+    ("Dolores Heights", ["dolores heights", "liberty hill", "liberty st", "cumberland st"]),
+    ("Mission Dolores", ["mission dolores", "dolores park", "dolores st"]),
+    ("Noe Valley", ["noe valley", "noe st"]),
+    ("Potrero Hill", ["potrero hill"]),
+    ("Nob Hill", ["nob hill"]),
+    ("SoMa", ["soma", "south of market"]),
+    ("Mission District", ["mission"]),
+    ("Hayes Valley", ["hayes"]),
+    ("NoPa", ["nopa", "panhandle", "broderick", "divisadero"]),
+    ("Financial District", ["financial", "fidi"]),
+]
+
+ZIP_TO_NEIGHBORHOOD = {
+    "94110": "Mission District",
+    "94102": "Hayes Valley",
+    "94117": "NoPa",
+    "94115": "NoPa",
+    "94104": "Financial District",
+    "94111": "Financial District",
+    "94131": "Noe Valley",
 }
 
 APIFY_ACTOR = "maxcopell~zillow-scraper"
@@ -235,21 +263,17 @@ class ZillowCollector(BaseCollector):
 
     def _detect_neighborhood(self, listing: Listing):
         addr_lower = listing.address.lower()
-        zip_code = listing.zip_code
-        if zip_code in {"94110", "94114"} or "mission" in addr_lower:
-            listing.neighborhood = "Mission District"
-        elif zip_code in {"94102", "94103"} or "hayes" in addr_lower:
-            listing.neighborhood = "Hayes Valley"
-        elif zip_code == "94117" or "nopa" in addr_lower or "panhandle" in addr_lower or "broderick" in addr_lower or "divisadero" in addr_lower:
-            listing.neighborhood = "NoPa"
-        elif zip_code in {"94104", "94111"} or "financial" in addr_lower or "fidi" in addr_lower:
-            listing.neighborhood = "Financial District"
-        elif "nob hill" in addr_lower:
-            listing.neighborhood = "Nob Hill"
-        elif "soma" in addr_lower or "south of market" in addr_lower:
-            listing.neighborhood = "SoMa"
 
-        if not listing.neighborhood and listing.latitude and listing.longitude:
+        for hood, keywords in NEIGHBORHOOD_KEYWORDS:
+            if any(kw in addr_lower for kw in keywords):
+                listing.neighborhood = hood
+                return
+
+        if listing.zip_code in ZIP_TO_NEIGHBORHOOD:
+            listing.neighborhood = ZIP_TO_NEIGHBORHOOD[listing.zip_code]
+            return
+
+        if listing.latitude and listing.longitude:
             for hood, bounds in NEIGHBORHOOD_BOUNDS.items():
                 lat_min, lat_max = bounds["lat"]
                 lng_min, lng_max = bounds["lng"]

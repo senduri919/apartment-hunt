@@ -24,6 +24,15 @@ USER_AGENTS = [
 ]
 
 NEIGHBORHOOD_KEYWORDS = {
+    "dolores heights": ["dolores heights", "liberty hill", "liberty st",
+                        "cumberland st"],
+    "mission dolores": ["mission dolores", "dolores park", "dolores st"],
+    "noe valley": ["noe valley", "noe st", "jersey st", "clipper st",
+                   "duncan st", "upper noe", "alvarado st", "elizabeth st",
+                   "28th st", "29th st", "30th st"],
+    "potrero hill": ["potrero hill", "wisconsin st", "carolina st", "de haro",
+                     "rhode island st", "connecticut st", "missouri st",
+                     "texas st", "arkansas st", "kansas st", "mariposa st"],
     "mission district": ["mission district", "mission dist", "the mission", "mission sf",
                          "valencia", "guerrero", "24th street", "16th st mission",
                          "bartlett", "shotwell", "folsom st", "south van ness",
@@ -45,12 +54,16 @@ NEIGHBORHOOD_KEYWORDS = {
 }
 
 NEIGHBORHOOD_BOUNDS = {
-    "Mission District": {"lat": (37.748, 37.766), "lng": (-122.427, -122.406)},
+    "Dolores Heights": {"lat": (37.754, 37.761), "lng": (-122.435, -122.425)},
+    "Mission Dolores": {"lat": (37.759, 37.769), "lng": (-122.430, -122.420)},
+    "Noe Valley": {"lat": (37.741, 37.757), "lng": (-122.440, -122.425)},
+    "Potrero Hill": {"lat": (37.750, 37.766), "lng": (-122.407, -122.390)},
+    "NoPa": {"lat": (37.770, 37.781), "lng": (-122.454, -122.437)},
+    "Financial District": {"lat": (37.790, 37.798), "lng": (-122.405, -122.390)},
+    "Nob Hill": {"lat": (37.7885, 37.798), "lng": (-122.4223, -122.4083)},
     "Hayes Valley": {"lat": (37.770, 37.780), "lng": (-122.442, -122.416)},
-    "NoPa": {"lat": (37.771, 37.779), "lng": (-122.452, -122.438)},
-    "Financial District": {"lat": (37.790, 37.798), "lng": (-122.403, -122.394)},
-    "Nob Hill": {"lat": (37.7885, 37.796), "lng": (-122.4223, -122.4083)},
     "SoMa": {"lat": (37.770, 37.787), "lng": (-122.413, -122.388)},
+    "Mission District": {"lat": (37.748, 37.766), "lng": (-122.427, -122.406)},
 }
 
 
@@ -317,6 +330,10 @@ class CraigslistCollector(BaseCollector):
         "financial district": "Financial District",
         "nob hill": "Nob Hill",
         "soma": "SoMa",
+        "noe valley": "Noe Valley",
+        "potrero hill": "Potrero Hill",
+        "mission dolores": "Mission Dolores",
+        "dolores heights": "Dolores Heights",
     }
 
     def _detect_neighborhood(self, text: str) -> str:
