@@ -78,6 +78,10 @@ def cmd_process(config):
     active = [l for l in all_listings if l.is_active]
     save_listings(active, DATA_DIR / "active.json")
 
+    new_path = DATA_DIR / "new_listings.json"
+    with open(new_path, "w") as f:
+        json.dump([l.to_dict() for l in new_listings], f, indent=2, default=str)
+
     logger.info(f"Saved {len(all_listings)} listings ({len(new_listings)} new, {len(active)} active)")
     return all_listings, new_listings
 
