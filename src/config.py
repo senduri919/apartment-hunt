@@ -68,7 +68,7 @@ class Config:
     rentcast_api_key: str = ""
     rapidapi_key: str = ""
     apify_api_key: str = ""
-    resend_api_key: str = ""
+    gmail_app_password: str = ""
 
 
 def load_config(config_path: Path | None = None) -> Config:
@@ -99,6 +99,6 @@ def load_config(config_path: Path | None = None) -> Config:
     config.rentcast_api_key = os.environ.get("RENTCAST_API_KEY", "")
     config.rapidapi_key = os.environ.get("RAPIDAPI_KEY", "")
     config.apify_api_key = os.environ.get("APIFY_API_KEY", "")
-    config.resend_api_key = os.environ.get("RESEND_API_KEY", "")
+    config.gmail_app_password = os.environ.get("GMAIL_APP_PASSWORD", "")
 
     return config
