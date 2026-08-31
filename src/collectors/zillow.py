@@ -59,25 +59,45 @@ SF_MAP_BOUNDS = {
 }
 
 
+PRIORITY_ZIPS = ["94110", "94102", "94103", "94114", "94117", "94107", "94109"]
+
+
+def _build_filter_state(min_beds: int, max_price: int) -> dict:
+    return {
+        "fr": {"value": True},
+        "fsba": {"value": False},
+        "fsbo": {"value": False},
+        "nc": {"value": False},
+        "cmsn": {"value": False},
+        "auc": {"value": False},
+        "fore": {"value": False},
+        "beds": {"min": min_beds},
+        "mp": {"max": max_price},
+    }
+
+
 def _build_search_url(min_beds: int, max_price: int) -> str:
     search_state = {
         "isMapVisible": True,
         "mapBounds": SF_MAP_BOUNDS,
-        "filterState": {
-            "fr": {"value": True},
-            "fsba": {"value": False},
-            "fsbo": {"value": False},
-            "nc": {"value": False},
-            "cmsn": {"value": False},
-            "auc": {"value": False},
-            "fore": {"value": False},
-            "beds": {"min": min_beds},
-            "mp": {"max": max_price},
-        },
+        "filterState": _build_filter_state(min_beds, max_price),
         "isListVisible": True,
     }
     encoded = urllib.parse.quote(json.dumps(search_state, separators=(",", ":")))
     return f"https://www.zillow.com/san-francisco-ca/rentals/?searchQueryState={encoded}"
+
+
+def _build_zip_search_urls(min_beds: int, max_price: int) -> list[str]:
+    urls = []
+    for zip_code in PRIORITY_ZIPS:
+        search_state = {
+            "isMapVisible": True,
+            "filterState": _build_filter_state(min_beds, max_price),
+            "isListVisible": True,
+        }
+        encoded = urllib.parse.quote(json.dumps(search_state, separators=(",", ":")))
+        urls.append(f"https://www.zillow.com/san-francisco-ca-{zip_code}/rentals/?searchQueryState={encoded}")
+    return urls
 
 
 class ZillowCollector(BaseCollector):
@@ -94,11 +114,16 @@ class ZillowCollector(BaseCollector):
         if not self.check_budget():
             return []
 
-        search_url = _build_search_url(
+        broad_url = _build_search_url(
             self.config.search.min_bedrooms,
             self.config.search.max_price,
         )
-        logger.info(f"Zillow: searching via Apify actor {APIFY_ACTOR}")
+        zip_urls = _build_zip_search_urls(
+            self.config.search.min_bedrooms,
+            self.config.search.max_price,
+        )
+        all_urls = [{"url": broad_url}] + [{"url": u} for u in zip_urls]
+        logger.info(f"Zillow: searching via Apify actor {APIFY_ACTOR} with {len(all_urls)} search URLs")
 
         headers = {
             "Authorization": f"Bearer {self.config.apify_api_key}",
@@ -106,7 +131,7 @@ class ZillowCollector(BaseCollector):
         }
 
         run_input = {
-            "searchUrls": [{"url": search_url}],
+            "searchUrls": all_urls,
             "resultsLimit": 100,
             "extractionMethod": "PAGINATION",
         }
@@ -116,7 +141,17 @@ class ZillowCollector(BaseCollector):
             logger.warning("Zillow: no results from Apify scraper")
             return []
 
-        logger.info(f"Zillow: scraped {len(results)} raw results")
+        seen_zpids = set()
+        deduped = []
+        for item in results:
+            zpid = str(item.get("zpid", item.get("id", "")))
+            if zpid and zpid in seen_zpids:
+                continue
+            if zpid:
+                seen_zpids.add(zpid)
+            deduped.append(item)
+        logger.info(f"Zillow: scraped {len(results)} raw results ({len(deduped)} unique)")
+        results = deduped
 
         listings = []
         filtered_count = 0
