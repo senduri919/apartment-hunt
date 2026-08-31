@@ -53,7 +53,7 @@ jobs:
 
       - name: Send notifications
         env:
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: python main.py notify
 
       - name: Commit updated data

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+import smtplib
 from datetime import datetime, timezone
-from pathlib import Path
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -17,8 +19,8 @@ def send_notification(new_listings: list[Listing], config: Config):
         logger.info("Notifications disabled")
         return
 
-    if not config.resend_api_key:
-        logger.warning("No Resend API key configured, skipping email notification")
+    if not config.gmail_app_password:
+        logger.warning("No Gmail app password configured, skipping email notification")
         _log_notification(new_listings)
         return
 
@@ -26,25 +28,28 @@ def send_notification(new_listings: list[Listing], config: Config):
         logger.warning("No notification recipients configured")
         return
 
-    import resend
-    resend.api_key = config.resend_api_key
-
     sorted_listings = sorted(new_listings, key=lambda l: l.score or 0, reverse=True)
     top_listings = sorted_listings[:5]
 
     html = _render_email(top_listings, len(new_listings), config)
     today = datetime.now(timezone.utc).strftime("%b %d, %Y")
+    subject = f"[Apartment Hunt] {len(new_listings)} new listing{'s' if len(new_listings) != 1 else ''} - {today}"
+    sender = config.notifications.from_email
 
     try:
-        resend.Emails.send({
-            "from": config.notifications.from_email,
-            "to": config.notifications.recipients,
-            "subject": f"[Apartment Hunt] {len(new_listings)} new listing{'s' if len(new_listings) != 1 else ''} - {today}",
-            "html": html,
-        })
-        logger.info(f"Email sent to {len(config.notifications.recipients)} recipients")
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(sender, config.gmail_app_password)
+            for recipient in config.notifications.recipients:
+                msg = MIMEMultipart("alternative")
+                msg["From"] = sender
+                msg["To"] = recipient
+                msg["Subject"] = subject
+                msg.attach(MIMEText(html, "html"))
+                server.sendmail(sender, recipient, msg.as_string())
+        logger.info(f"Email sent to {len(config.notifications.recipients)} recipients via Gmail SMTP")
     except Exception as e:
-        logger.error(f"Failed to send email: {e}")
+        logger.error(f"Failed to send email via Gmail SMTP: {e}")
         _log_notification(new_listings)
 
 

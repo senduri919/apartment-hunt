@@ -51,7 +51,7 @@ scoring:
 
 notifications:
   enabled: true
-  from_email: "onboarding@resend.dev"
+  from_email: "saienduri09@gmail.com"
   recipients:
     - "drcutinha@gmail.com"
     - "srikarcy@gmail.com"
