@@ -123,8 +123,6 @@ def process_listings(
             existing_index[raw.id] = raw
 
     current_ids = {r.id for r in raw_listings} | matched_ids
-    stale_days = 14
-    now = datetime.now(timezone.utc)
 
     for listing in merged:
         extract_features(listing)
@@ -136,17 +134,7 @@ def process_listings(
             neighborhoods=config.search.neighborhoods,
         )
 
-        if listing.id in current_ids:
-            listing.is_active = True
-        else:
-            last = listing.last_seen or listing.first_seen
-            if last:
-                try:
-                    last_dt = datetime.fromisoformat(str(last))
-                    if (now - last_dt).days > stale_days:
-                        listing.is_active = False
-                except (ValueError, TypeError):
-                    pass
+        listing.is_active = listing.id in current_ids
 
     collab = load_collaboration()
     for listing in merged:
