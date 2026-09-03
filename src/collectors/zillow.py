@@ -155,19 +155,24 @@ class ZillowCollector(BaseCollector):
 
         listings = []
         filtered_count = 0
+        parse_fail_count = 0
         for item in results:
             listing = self._parse_listing(item)
             if not listing:
+                parse_fail_count += 1
                 continue
             if self._matches_filters(listing):
                 listings.append(listing)
             else:
                 filtered_count += 1
-                if filtered_count <= 3:
+                if filtered_count <= 5:
                     logger.info(
                         f"Zillow filtered out: price={listing.price} beds={listing.bedrooms} "
-                        f"baths={listing.bathrooms} zip={listing.zip_code} hood={listing.neighborhood}"
+                        f"baths={listing.bathrooms} zip={listing.zip_code} hood={listing.neighborhood} "
+                        f"addr={listing.address[:50]}"
                     )
+        if parse_fail_count:
+            logger.info(f"Zillow: {parse_fail_count} items failed to parse")
 
         logger.info(f"Zillow: {len(listings)} listings after filtering ({len(results)} raw)")
         return listings
