@@ -153,6 +153,16 @@ class ZillowCollector(BaseCollector):
         logger.info(f"Zillow: scraped {len(results)} raw results ({len(deduped)} unique)")
         results = deduped
 
+        if results:
+            sample = results[0]
+            logger.info(f"Zillow sample item keys: {sorted(sample.keys())}")
+            for key in ("address", "listingAddress", "price", "listingPrice",
+                        "bedrooms", "bathrooms", "latLong", "coordinates",
+                        "zpid", "id", "detailUrl", "url"):
+                if key in sample:
+                    val = sample[key]
+                    logger.info(f"  {key} = {repr(val)[:200]}")
+
         listings = []
         filtered_count = 0
         parse_fail_count = 0
@@ -246,16 +256,23 @@ class ZillowCollector(BaseCollector):
         return []
 
     def _parse_listing(self, item: dict) -> Listing | None:
-        address = item.get("address", "") or item.get("addressStreet", "")
+        listing_addr = item.get("listingAddress") or {}
+        address = (
+            listing_addr.get("street")
+            or listing_addr.get("full")
+            or item.get("address", "")
+            or item.get("addressStreet", "")
+        )
         if not address or item.get("isUndisclosedAddress"):
             return None
 
-        price = item.get("unformattedPrice")
+        listing_price = item.get("listingPrice") or {}
+        price = listing_price.get("amount") or item.get("unformattedPrice")
         if not price:
-            price_str = item.get("price", "")
+            price_str = listing_price.get("formatted") or item.get("price", "")
             if isinstance(price_str, str):
                 try:
-                    price = int(float(price_str.replace("$", "").replace(",", "").split("/")[0]))
+                    price = int(float(price_str.replace("$", "").replace(",", "").replace("+", "").split("/")[0]))
                 except (ValueError, TypeError):
                     return None
             elif isinstance(price_str, (int, float)):
@@ -266,36 +283,43 @@ class ZillowCollector(BaseCollector):
         bedrooms = item.get("bedrooms") or item.get("beds") or 0
         bathrooms = item.get("bathrooms") or item.get("baths") or 0
 
-        lat_long = item.get("latLong") or item.get("coordinates") or {}
-        lat = lat_long.get("latitude") if isinstance(lat_long, dict) else None
-        lng = lat_long.get("longitude") if isinstance(lat_long, dict) else None
+        coords = item.get("coordinates") or item.get("latLong") or {}
+        lat = coords.get("latitude") if isinstance(coords, dict) else None
+        lng = coords.get("longitude") if isinstance(coords, dict) else None
 
-        detail_url = item.get("detailUrl", "")
+        detail_url = item.get("detailUrl") or item.get("url") or ""
         if detail_url and not detail_url.startswith("http"):
             detail_url = f"https://www.zillow.com{detail_url}"
 
+        zpid = str(item.get("zpid") or item.get("id") or "")
+        city = listing_addr.get("city") or item.get("addressCity", "San Francisco")
+        state = listing_addr.get("state") or item.get("addressState", "CA")
+        zip_code = str(listing_addr.get("zipCode") or item.get("addressZipcode", ""))
+
         listing = Listing(
             source="zillow",
-            source_id=str(item.get("zpid", item.get("id", ""))),
+            source_id=zpid,
             source_url=detail_url,
-            address=item.get("addressStreet", address.split(",")[0].strip()),
-            city=item.get("addressCity", "San Francisco"),
-            state=item.get("addressState", "CA"),
-            zip_code=str(item.get("addressZipcode", "")),
+            address=address.split(",")[0].strip(),
+            city=city,
+            state=state,
+            zip_code=zip_code,
             latitude=lat,
             longitude=lng,
             price=int(price),
             bedrooms=int(bedrooms or 0),
             bathrooms=float(bathrooms or 0),
             sqft=item.get("livingArea") or item.get("area"),
-            property_type=item.get("homeType"),
+            property_type=item.get("homeType") or item.get("propertyType"),
         )
 
-        if item.get("imgSrc"):
-            listing.images = [item["imgSrc"]]
+        img = item.get("imgSrc") or item.get("image")
+        if img:
+            listing.images = [img]
 
-        if item.get("availabilityDate"):
-            listing.available_date = str(item["availabilityDate"]).split(" ")[0]
+        avail = item.get("availabilityDate") or item.get("dateAvailable")
+        if avail:
+            listing.available_date = str(avail).split(" ")[0]
 
         listing.id = generate_listing_id(listing.address or str(listing.source_id), listing.price, listing.bedrooms)
         self._detect_neighborhood(listing)

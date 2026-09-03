@@ -140,13 +140,14 @@ def process_listings(
             listing.is_active = True
         else:
             last = listing.last_seen or listing.first_seen
-            if last:
-                try:
-                    last_dt = datetime.fromisoformat(str(last))
-                    if (now - last_dt).days > stale_days:
-                        listing.is_active = False
-                except (ValueError, TypeError):
-                    pass
+            try:
+                last_dt = datetime.fromisoformat(str(last)) if last else None
+            except (ValueError, TypeError):
+                last_dt = None
+            if last_dt and (now - last_dt).days > stale_days:
+                listing.is_active = False
+            elif last_dt:
+                listing.is_active = True
 
     collab = load_collaboration()
     for listing in merged:
