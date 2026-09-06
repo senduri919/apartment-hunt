@@ -158,7 +158,7 @@ class ZillowCollector(BaseCollector):
             logger.info(f"Zillow sample item keys: {sorted(sample.keys())}")
             for key in ("address", "listingAddress", "price", "listingPrice",
                         "bedrooms", "bathrooms", "latLong", "coordinates",
-                        "zpid", "id", "detailUrl", "url"):
+                        "zpid", "id", "propertyUrl", "detailUrl", "url"):
                 if key in sample:
                     val = sample[key]
                     logger.info(f"  {key} = {repr(val)[:200]}")
@@ -287,7 +287,7 @@ class ZillowCollector(BaseCollector):
         lat = coords.get("latitude") if isinstance(coords, dict) else None
         lng = coords.get("longitude") if isinstance(coords, dict) else None
 
-        detail_url = item.get("detailUrl") or item.get("url") or ""
+        detail_url = item.get("propertyUrl") or item.get("detailUrl") or item.get("url") or ""
         if detail_url and not detail_url.startswith("http"):
             detail_url = f"https://www.zillow.com{detail_url}"
 
@@ -313,9 +313,13 @@ class ZillowCollector(BaseCollector):
             property_type=item.get("homeType") or item.get("propertyType"),
         )
 
-        img = item.get("imgSrc") or item.get("image")
+        img = item.get("mainImage") or item.get("imgSrc") or item.get("image")
         if img:
             listing.images = [img]
+
+        photos = item.get("listingPhotos")
+        if isinstance(photos, list) and photos and not listing.images:
+            listing.images = [p.get("url") or p for p in photos[:5] if p]
 
         avail = item.get("availabilityDate") or item.get("dateAvailable")
         if avail:
