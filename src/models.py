@@ -106,5 +106,7 @@ class Listing:
             if other_val is not None and (self_val is None or self_val == "" or self_val == 0):
                 setattr(self, fld, other_val)
         self.last_seen = other.last_seen
+        if other.source_url and not self.source_url:
+            self.source_url = other.source_url
         if other.images and not self.images:
             self.images = other.images
